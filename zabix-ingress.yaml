@@ -7,7 +7,7 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: "/"  # Handle path rewrites if necessary
 spec:
   rules:
-    - host: zab.star-expertise.local  # The domain for your Ghost blog
+    - host: pipeline.star-expertise.local  # The domain for your Ghost blog
       http:
         paths:
           - path: /
@@ -19,5 +19,5 @@ spec:
                   number: 80  # Port that Ingress should forward to
   tls:
     - hosts:
-        - zab.star-expertise.local  # The domain for which TLS should be applied
-      secretName: zabix-ingress-cert  # Name of the TLS secret for HTTPS
+        - pipeline.star-expertise.local  # The domain for which TLS should be applied
+      secretName: pipeline-secret   # Name of the TLS secret for HTTPS
