@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: zabbix-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: zab.star-expertise.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: zabbix-server
+            port:
+              number: 10051
+  tls:
+  - hosts:
+    - zab.star-expertise.local
+    secretName: zabix-ingress-cert  # Reference to the secret containing the TLS certificate
