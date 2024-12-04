@@ -1,46 +1,72 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: zabbix-server
+  name: zabbix-db
   labels:
     app: zabbix
+    component: db
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: zabbix
+      component: db
   template:
     metadata:
       labels:
         app: zabbix
+        component: db
     spec:
       containers:
-      - name: zabbix-server
-        image: zabbix/zabbix-server-mysql:latest  # Adjust to your desired version
-        env:
-          - name: MYSQL_ROOT_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: zabbix-mysql-secret
-                key: mysql-root-password
-        ports:
-        - containerPort: 10051
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "500m"
-          limits:
-            memory: "1Gi"
-            cpu: "1"
+        - name: zabbix-db
+          image: mysql:5.7
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zabbix-mysql-secret  # Reference to the secret
+                  key: MYSQL_ROOT_PASSWORD  # Key in the secret
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: zabbix-mysql-secret
+                  key: MYSQL_USER  # Key in the secret
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zabbix-mysql-secret
+                  key: MYSQL_PASSWORD  # Key in the secret
+          volumeMounts:
+            - name: zabbix-db-data
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: zabbix-db-data
+          persistentVolumeClaim:
+            claimName: zabbix-db-pvc
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: zabbix-server
+  name: zabbix-db
 spec:
   selector:
     app: zabbix
+    component: db
   ports:
-    - port: 10051
-      targetPort: 10051
-  type: ClusterIP
+    - protocol: TCP
+      port: 3306
+      targetPort: 3306
+  clusterIP: None  # Headless service for stateful communication
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zabbix-db-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
