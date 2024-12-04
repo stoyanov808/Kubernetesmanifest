@@ -14,7 +14,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: zabbix-web  # The service that exposes Ghost
+                name: nginx-service  # The service that exposes Ghost
                 port:
                   number: 80  # Port that Ingress should forward to
   tls:
