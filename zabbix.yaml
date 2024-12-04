@@ -17,21 +17,44 @@ spec:
       containers:
         - name: ghost
           image: ghost:latest
-          ports:
-            - containerPort: 2368
           env:
             - name: url
-              value: "https://zab.star-expertise.local"  # Update to HTTPS since we're using TLS
+              value: "https://zab.star-expertise.local"  # Use HTTPS for the domain
+            - name: database__client
+              value: "mysql"  # Use MySQL or SQLite (for example)
+            - name: database__connection__host
+              value: "mysql-db-service"  # MySQL service name
+            - name: database__connection__user
+              value: "ghost_user"  # MySQL user
+            - name: database__connection__password
+              valueFrom:
+                secretKeyRef:
+                  name: ghost-db-secrets
+                  key: mysql-password  # Secret containing MySQL password
+            - name: database__connection__database
+              value: "ghost_db"  # MySQL database name
+          ports:
+            - containerPort: 2368
+          volumeMounts:
+            - name: ghost-data
+              mountPath: /var/lib/ghost/content
+      volumes:
+        - name: ghost-data
+          persistentVolumeClaim:
+            claimName: ghost-pvc  # Persistent volume claim for Ghost data
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: ghost
+  name: ghost-service
 spec:
   selector:
     app: ghost
   ports:
-    - port: 80
-      targetPort: 2368
-  type: ClusterIP
+    - protocol: TCP
+      port: 80
+      targetPort: 2368  # Forwarding to Ghost's port 2368
+  type: ClusterIP  # Internal service; Ingress will expose it externally
+
+---
