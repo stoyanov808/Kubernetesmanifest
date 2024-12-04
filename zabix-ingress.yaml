@@ -3,21 +3,21 @@ kind: Ingress
 metadata:
   name: ghost-ingress
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"  # Force SSL redirection (HTTP to HTTPS)
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"  # Ensure HTTPS redirection
+    nginx.ingress.kubernetes.io/rewrite-target: "/"  # Handle path rewrites if necessary
 spec:
-  tls:
-    - hosts:
-        - zab.star-expertise.local  # The hostname to apply TLS to
-      secretName: zabix-ingress-cert  # The secret that holds the TLS certificate
   rules:
-    - host: zab.star-expertise.local
+    - host: zab.star-expertise.local  # The domain for your Ghost blog
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: ghost
+                name: ghost-service  # The service that exposes Ghost
                 port:
-                  number: 80
+                  number: 80  # Port that Ingress should forward to
+  tls:
+    - hosts:
+        - zab.star-expertise.local  # The domain for which TLS should be applied
+      secretName: zabix-ingress-cert  # Name of the TLS secret for HTTPS
