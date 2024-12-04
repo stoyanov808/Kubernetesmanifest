@@ -1,199 +1,59 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: zabbix-db
+  name: prometheus
   labels:
-    app: zabbix
-    component: db
+    app: prometheus
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: zabbix
-      component: db
+      app: prometheus
   template:
     metadata:
       labels:
-        app: zabbix
-        component: db
+        app: prometheus
     spec:
       containers:
-        - name: zabbix-db
-          image: mysql:5.7
-          env:
-            - name: MYSQL_ROOT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: zabbix-mysql-secret
-                  key: MYSQL_ROOT_PASSWORD
-            - name: MYSQL_USER
-              valueFrom:
-                secretKeyRef:
-                  name: zabbix-mysql-secret
-                  key: MYSQL_USER
-            - name: MYSQL_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: zabbix-mysql-secret
-                  key: MYSQL_PASSWORD
-            - name: MYSQL_DATABASE
-              valueFrom:
-                secretKeyRef:
-                  name: zabbix-mysql-secret
-                  key: MYSQL_DATABASE
+        - name: prometheus
+          image: prom/prometheus:latest
           ports:
-            - containerPort: 3306
-          resources:
-            requests:
-              memory: "512Mi"
-              cpu: "500m"
-            limits:
-              memory: "1Gi"
-              cpu: "1"
-
+            - containerPort: 9090
+          volumeMounts:
+            - name: prometheus-config
+              mountPath: /etc/prometheus
+              subPath: prometheus.yml
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: prometheus-configmap
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: zabbix-db
+  name: prometheus
 spec:
-  selector:
-    app: zabbix
-    component: db
   ports:
-    - protocol: TCP
-      port: 3306
-      targetPort: 3306
-  clusterIP: None  # Headless service for stateful communication
-
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: zabbix-server
-  labels:
-    app: zabbix
-    component: server
-spec:
-  replicas: 1
+    - port: 9090
+      targetPort: 9090
   selector:
-    matchLabels:
-      app: zabbix
-      component: server
-  template:
-    metadata:
-      labels:
-        app: zabbix
-        component: server
-    spec:
-      containers:
-        - name: zabbix-server
-          image: zabbix/zabbix-server-mysql:latest
-          env:
-            - name: DB_SERVER_HOST
-              value: zabbix-db  # Name of the DB service
-            - name: MYSQL_USER
-              valueFrom:
-                secretKeyRef:
-                  name: zabbix-mysql-secret
-                  key: MYSQL_USER
-            - name: MYSQL_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: zabbix-mysql-secret
-                  key: MYSQL_PASSWORD
-            - name: MYSQL_DATABASE
-              valueFrom:
-                secretKeyRef:
-                  name: zabbix-mysql-secret
-                  key: MYSQL_DATABASE
-          ports:
-            - containerPort: 10051
-          resources:
-            requests:
-              memory: "512Mi"
-              cpu: "500m"
-            limits:
-              memory: "1Gi"
-              cpu: "1"
-
+    app: prometheus
 ---
-apiVersion: v1
-kind: Service
+apiVersion: networking.k8s.io/v1
+kind: Ingress
 metadata:
-  name: zabbix-server
+  name: prometheus-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
-  selector:
-    app: zabbix
-    component: server
-  ports:
-    - protocol: TCP
-      port: 10051
-      targetPort: 10051
-
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: zabbix-web
-  labels:
-    app: zabbix
-    component: web
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: zabbix
-      component: web
-  template:
-    metadata:
-      labels:
-        app: zabbix
-        component: web
-    spec:
-      containers:
-        - name: zabbix-web
-          image: zabbix/zabbix-web-nginx-mysql:latest
-          env:
-            - name: ZBX_SERVER_HOST
-              value: zabbix-server  # Name of the Zabbix server service
-            - name: DB_SERVER_HOST
-              value: zabbix-db  # Name of the DB service
-            - name: MYSQL_USER
-              valueFrom:
-                secretKeyRef:
-                  name: zabbix-mysql-secret
-                  key: MYSQL_USER
-            - name: MYSQL_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: zabbix-mysql-secret
-                  key: MYSQL_PASSWORD
-            - name: MYSQL_DATABASE
-              valueFrom:
-                secretKeyRef:
-                  name: zabbix-mysql-secret
-                  key: MYSQL_DATABASE
-          ports:
-            - containerPort: 80
-          resources:
-            requests:
-              memory: "512Mi"
-              cpu: "500m"
-            limits:
-              memory: "1Gi"
-              cpu: "1"
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: zabbix-web
-spec:
-  selector:
-    app: zabbix
-    component: web
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 80
+  rules:
+    - host: zab.star-expertise.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus
+                port:
+                  number: 9090
