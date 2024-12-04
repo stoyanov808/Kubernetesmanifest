@@ -37,10 +37,12 @@ spec:
                   name: zabbix-mysql-secret
                   key: MYSQL_PASSWORD
             - name: MYSQL_DATABASE
-              value: zabbix
-          volumeMounts:
-            - name: zabbix-db-data
-              mountPath: /var/lib/mysql
+              valueFrom:
+                secretKeyRef:
+                  name: zabbix-mysql-secret
+                  key: MYSQL_DATABASE
+          ports:
+            - containerPort: 3306
           resources:
             requests:
               memory: "512Mi"
@@ -48,10 +50,6 @@ spec:
             limits:
               memory: "1Gi"
               cpu: "1"
-      volumes:
-        - name: zabbix-db-data
-          persistentVolumeClaim:
-            claimName: zabbix-db-pvc
 
 ---
 apiVersion: v1
